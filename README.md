@@ -22,13 +22,17 @@ Prepare follwing two arugments: <br>
 
 
 ## Output
+- **SAM file containing all reads mapped to the target gene annotated with `<Gene name>.<SAM file name>.sam.`**
+- **Divided SAM files for each variant annotated with `.divided.sam.`**
+  - SAM files are output for each of the variants.
+- **SAM files containing reads including deletions`.deletion.sam.`**
+  - `all_deletion.sam.` : SAM file containing all reads mapped to the target gene with the deletion.
+  - `variantpos_deletion.sam.`: SAM file containing reads mapped to the target gene with the deletion at the mutation position.
+- **Base call table containing the number of bases deleted from each base annotated with `.csv`**
 
-・Divided SAM files for each variant<br>
-・Unmapped SAM files containing reads with bases in variant positions deleted<br>
-・Base call table containing the number of bases deleted from each base
 
 ## File Instructions
-・The input FASTA file contains sequence names and their corresponding DNA sequences; the reference sequence is labelled 	`<Seqname>_Ref`.
+・The input FASTA file contains sequence names and their corresponding DNA sequences; the reference sequence is labelled 	`<Gene name>_Ref`.
 ```text
 #./Demo/Input_file/test_FASTA_G4I8.txt
 >G4I8_Ref
@@ -38,6 +42,7 @@ GAGATGTCTGGCGCAGACATCTCAAATTCAGCGCTTTGGTGGTGGAATGATGCTATGTGGGCTGAAAAACAAATCGGGCT
 ```
 
 # Demo
+Excuted by MacbookAir M3 8GB
 ```text
 cd BIVID_MaP2025
 # Output divided SAM files for each variant and base call tables for calculation of deleted reads
