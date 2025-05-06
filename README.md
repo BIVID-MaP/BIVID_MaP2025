@@ -58,15 +58,30 @@ Executed by MacbookAir M3 8GB
 cd BIVID_MaP2025
 # Install Julia environment
 julia --project=. -e 'using Pkg; Pkg.instantiate()'
+real	0m3.659s
+user	0m1.632s
+sys	0m0.566s
 
 # Build Python environment
 export PYTHON="/path/to/your/python"
 julia --project=. -e 'using Pkg; Pkg.build("PyCall")'
+real	0m10.599s
+user	0m6.958s
+sys	0m1.031s
 
 # Output divided SAM files for each variant and base call tables for calculation of deleted reads
-julia ./BIVID.jl --fasta_path ./Demo/Input_file/test_FASTA_G4I8.txt --sam_dir ./Demo/Input_file/input_sam 
+julia ./BIVID.jl --fasta_path ./Demo/Input_file/test_FASTA_G4I8.txt --sam_dir ./Demo/Input_file/input_sam
+real	0m31.185s
+user	0m28.659s
+sys	0m0.924s
 
+# Ensure that there are no significant deletions in the variant positions:
+# The total number of deletion‐containing reads
+samtools view -c ./Demo/Output_file/G4I8.test_TGIRT.all_deletion.sam
+# The number of reads with deletion in variant positions
+samtools view -c ./Demo/Output_file/G4I8.test_TGIRT.variantpos_deletion.sam
 ```
+
 
 
 
