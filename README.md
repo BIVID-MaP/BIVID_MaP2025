@@ -16,27 +16,10 @@ git clone https://github.com/EmiMiyashita-126/BIVID_MaP2025/
 # Usage
 ## Input
 
-・FASTA file including reference sequence and mutant sequences<br>
-```text
-#./Demo/Input_file/test_FASTA_G4I8.txt
->G4I8_Ref
-GAGATGTCTGGCGCAGACATCTCAAATTCAGCGCTTTGGTGGTGGAATGGTGCTATGTGGGCTGAAAAACAAATCGGGCTTCGGTCCGGTTC
->G4I8_Mut
-GAGATGTCTGGCGCAGACATCTCAAATTCAGCGCTTTGGTGGTGGAATGATGCTATGTGGGCTGAAAAACAAATCGGGCTTCGGTCCGGTTC
-```
-・SAM file mapped to reference sequence
-```text
-#./Demo/Input_file/test_TGIRT.sam
-@SQ	SN:G4I8_Ref	LN:92
-@PG	ID:bwa	PN:bwa	VN:0.7.17-r1188	CL:bwa mem /Users/emimiyashita/Desktop/事務書類/2025etal/analysis/Figure_SI_Run252_G4I8_G4timedependency/Fastq/reference/I8_ref/I8_ref /Users/emimiyashita/Desktop/事務書類/2025etal/analysis/Figure_SI_Run252_G4I8_G4timedependency/Fastq/Fastp_output/S19_S19_L001_R1_001_fastp.fastq /Users/emimiyashita/Desktop/事務書類/2025etal/analysis/Figure_SI_Run252_G4I8_G4timedependency/Fastq/Fastp_output/S19_S19_L001_R2_001_fastp.fastq
-@PG	ID:samtools	PN:samtools	PP:bwa	VN:1.12	CL:samtools view -h -q 20 /Users/emimiyashita/Desktop/事務書類/2025etal/analysis/Figure_SI_Run252_G4I8_G4timedependency/Fastq/SAM/S19_S19_removed.sam
-FS10003367:8:BTR67813-1623:1:1101:1090:1000	97	G4I8_Ref	24	60	32M	=	24	32	AAATTCAGCGCTTTGGTGGTGGAATGGTGCTA	FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF	NM:i:0	MD:Z:32	MC:Z:32M	AS:i:32	XS:i:0
-FS10003367:8:BTR67813-1623:1:1101:1090:1000	145	G4I8_Ref	24	60	32M	=	24	-32	AAATTCAGCGCTTTGGTGGTGGAATGGTGCTA	::FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF	NM:i:0	MD:Z:32	MC:Z:32M	AS:i:32	XS:i:0
-FS10003367:8:BTR67813-1623:1:1101:1230:1000	99	G4I8_Ref	24	60	46M	=	24	46	AAATTCAGCGCTTTGGTGGTGGAATGATGCTATGTGGGCTGAAAAA	FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF	NM:i:1	MD:Z:26G19	MC:Z:46M	AS:i:41	XS:i:0
-FS10003367:8:BTR67813-1623:1:1101:1230:1000	147	G4I8_Ref	24	60	46M	=	24	-46	AAATTCAGCGCTTTGGTGGTGGAATGATGCTATGTGGGCTGAAAAA	FFFFFFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFFFFFFFFFFF	NM:i:1	MD:Z:26G19	MC:Z:46M	AS:i:41	XS:i:0
-FS10003367:8:BTR67813-1623:1:1101:1560:1000	99	G4I8_Ref	24	60	46M	=	24	46	AAATTCAGCGCTTTGGTGGTGGAATGATGCTATGTGGGCTGAAAAA	FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF	NM:i:1	MD:Z:26G19	MC:Z:46M	AS:i:41	XS:i:0
-FS10003367:8:BTR67813-1623:1:1101:1560:1000	147	G4I8_Ref	24	60	46M	=	24	-46	AAATTCAGCGCTTTGGTGGTGGAATGATGCTATGTGGGCTGAAAAA	FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF	NM:i:1	MD:Z:26G19	MC:Z:46M	AS:i:41	XS:i:0
-```
+Prepare follwing two arugments: <br>
+  `--fasta_path` : Path of the FASTA file containing the reference and mutation sequences<br>
+  `--sam_dir` : Path of the directroy including SAM files mapped to reference sequences<br>
+
 
 ## Output
 
@@ -45,7 +28,27 @@ FS10003367:8:BTR67813-1623:1:1101:1560:1000	147	G4I8_Ref	24	60	46M	=	24	-46	AAAT
 ・Base call table containing the number of bases deleted from each base
 
 ## File Instructions
-・The input FASTA file contains sequence names and their corresponding DNA sequences; the reference sequence is labelled 	`<Seqname>_Ref`, while each mutant sequence is labelled 	`<Seqname>_Mut`.
+・The input FASTA file contains sequence names and their corresponding DNA sequences; the reference sequence is labelled 	`<Seqname>_Ref`.
+```text
+#./Demo/Input_file/test_FASTA_G4I8.txt
+>G4I8_Ref
+GAGATGTCTGGCGCAGACATCTCAAATTCAGCGCTTTGGTGGTGGAATGGTGCTATGTGGGCTGAAAAACAAATCGGGCTTCGGTCCGGTTC
+>G4I8_Mut
+GAGATGTCTGGCGCAGACATCTCAAATTCAGCGCTTTGGTGGTGGAATGATGCTATGTGGGCTGAAAAACAAATCGGGCTTCGGTCCGGTTC
+```
+
+#Demo
+Excuted by MacbookAir (M3)
+```bash
+cd BIVID_MaP2025
+##Output divided SAM files for each variant and base call tables for calculation of deleted reads
+julia ./Variant_deletion_profiling.jl --fasta_path ./Demo/Input_file/test_Input_FASTA_G4I8.txt --sam_dir ./Demo/Input_file/input_sam
+
+```
+
+
+
+
 
 
 
