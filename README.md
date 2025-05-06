@@ -10,10 +10,23 @@ git clone https://github.com/EmiMiyashita-126/BIVID_MaP2025/
 ```
 
 # Content
+- `BIVID.jl`: Main Julia script. Receives FASTA/SAM from command line arguments and performs the analysis.
 
+- `Project.toml` / `Manifest.toml`:  Maintain the list of packages and versions required for this project.
+
+- `Demo/` 
+  - `Input_file/`：FASTA and SAM files for testing
+    - test_FASTA_G4I8.txt
+    - input_sam
+      - test_TGIRT.sam
+      - test_SSIV.sam
+  - `Output_file/`：Various SAMs/CSVs generated after script execution
+- `images/`  
+  Folder with README diagrams.
 # Requirement
 
-・Julia (ver. 1.7.1)
+- Julia (ver. 1.8.2)
+- Python (ver. 3.8.12)
 
 # Usage
 ## Input
