@@ -17,6 +17,13 @@ git clone https://github.com/…/REPO.git
 ## Input
 
 ・FASTA file including reference sequence and mutant sequences<br>
+```text
+#./Demo/Input_file/test_FASTA_G4I8.txt
+>G4I8_Ref
+GAGATGTCTGGCGCAGACATCTCAAATTCAGCGCTTTGGTGGTGGAATGGTGCTATGTGGGCTGAAAAACAAATCGGGCTTCGGTCCGGTTC
+>G4I8_Mut
+GAGATGTCTGGCGCAGACATCTCAAATTCAGCGCTTTGGTGGTGGAATGATGCTATGTGGGCTGAAAAACAAATCGGGCTTCGGTCCGGTTC
+```
 ・SAM file mapped to reference sequence
 
 ## Output
