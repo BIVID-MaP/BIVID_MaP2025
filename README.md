@@ -22,14 +22,25 @@ Prepare following two arguments: <br>
 
 
 ## Output
-- **SAM file containing all reads mapped to the target gene annotated with `<Gene name>.<SAM file name>.sam.`**<br><br>
-- **Divided SAM files for each variant annotated with `.divided.sam.`**
-  - SAM files containing reads for each variant.<br><br>
-- **SAM files containing reads including deletions`.deletion.sam.`**
-  - `all_deletion.sam.` : SAM file containing all reads mapped to the target gene with the deletion.
-  - `variantpos_deletion.sam.`: SAM file containing reads mapped to the target gene with the deletion at the mutation position.<br><br>
-- **Base call table containing the number of bases deleted from each base annotated with `.csv`**<br>
+The common gene name for all variants is <Gene> and the argument SAM file name is <Parent>, the sequence name of each variant in FASTA file is <FASTA ID>. 
+### SAM file
 
+- `<Gene>.<Parent>.sam`  
+  SAM containing all reads mapped to the target gene<br>
+
+- `<Gene>.<Parent>.<FASTA ID>.divided.sam`  
+  SAM files divided by variant
+
+- `<Gene>.<Parent>.all_deletion.sam`  
+  SAM containing reads with all deletions mapped to the target gene 
+
+- `<Gene>.<Parent>.variantpos_deletion.sam`  
+   SAM file containing reads mapped to the target gene with the deletion at the mutation position
+
+### CSV file
+
+- `<Gene>.<Parent>.<FASTA ID>.csv`  
+  Base call table used to calculate the deletion rate for each base. Output from `<Gene>.<Parent>.<FASTA ID>.divided.sam` for each variant. 
 
 ## File Instructions
 ・The input FASTA file contains sequence names and their corresponding DNA sequences; the reference sequence is labelled 	`<Gene name>_Ref`.
