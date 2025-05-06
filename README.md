@@ -18,7 +18,7 @@ git clone https://github.com/EmiMiyashita-126/BIVID_MaP2025/
 
 Prepare two  following arguments: <br>
   `--fasta_path` : Path of the FASTA file containing the reference and mutation sequences<br>
-  `--sam_dir` : Path of the directory including SAM files mapped to reference sequences<br>
+  `--sam_dir` : Path to directory containing SAM files mapped to the reference<br>
 
 
 ## Output
