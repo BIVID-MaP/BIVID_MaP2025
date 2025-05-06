@@ -4,7 +4,7 @@ The software for distribution of sequencing reads in SAM file and caluculationg 
 
 # Installation 
 ```bash
-git clone https://github.com/…/REPO.git
+git clone https://github.com/EmiMiyashita-126/BIVID_MaP2025/
 ```
 
 # Content
