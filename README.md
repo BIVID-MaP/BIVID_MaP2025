@@ -64,7 +64,7 @@ export PYTHON="/path/to/your/python"
 julia --project=. -e 'using Pkg; Pkg.build("PyCall")'
 
 # Output divided SAM files for each variant and base call tables for calculation of deleted reads
-julia ./Variant_deletion_profiling.jl --fasta_path ./Demo/Input_file/test_Input_FASTA_G4I8.txt --sam_dir ./Demo/Input_file/input_sam
+julia ./BIVID.jl --fasta_path ./Demo/Input_file/test_Input_FASTA_G4I8.txt --sam_dir ./Demo/Input_file/input_sam
 
 ```
 
