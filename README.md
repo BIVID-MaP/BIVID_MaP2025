@@ -22,13 +22,13 @@ Prepare following two arguments: <br>
 
 
 ## Output
-- **SAM file containing all reads mapped to the target gene annotated with `<Gene name>.<SAM file name>.sam.`**
+- **SAM file containing all reads mapped to the target gene annotated with `<Gene name>.<SAM file name>.sam.`**<br><br>
 - **Divided SAM files for each variant annotated with `.divided.sam.`**
-  - SAM files are output for each of the variants.
+  - SAM files containing reads for each variant.<br><br>
 - **SAM files containing reads including deletions`.deletion.sam.`**
   - `all_deletion.sam.` : SAM file containing all reads mapped to the target gene with the deletion.
-  - `variantpos_deletion.sam.`: SAM file containing reads mapped to the target gene with the deletion at the mutation position.
-- **Base call table containing the number of bases deleted from each base annotated with `.csv`**
+  - `variantpos_deletion.sam.`: SAM file containing reads mapped to the target gene with the deletion at the mutation position.<br><br>
+- **Base call table containing the number of bases deleted from each base annotated with `.csv`**<br>
 
 
 ## File Instructions
