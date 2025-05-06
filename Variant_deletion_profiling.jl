@@ -2,25 +2,25 @@ using CSV
 using DataFrames
 using Pkg
 using Pkg
-Pkg.add("BioAlignments")
-Pkg.add("BioSequences")
+# Pkg.add("BioAlignments")
+# Pkg.add("BioSequences")
 using BioAlignments
 using BioSequences
 #一回やれば大丈夫
-Pkg.add("Bio")
-Pkg.add("StringDistances")
-Pkg.add("BioAlignments")
-Pkg.add("PyCall")
-Pkg.add("BioTools")
+# Pkg.add("Bio")
+# Pkg.add("StringDistances")
+# Pkg.add("BioAlignments")
+# Pkg.add("PyCall")
+# Pkg.add("BioTools")
 #Pkg.add("PyCall")
 ####仮想環境でpycallが使えるようにする
 ###team503から引用
 #ENV["PYTHON"]="/opt/anaconda3/bin/python"
-ENV["PYTHON"]="/Users/emimiyashita/opt/anaconda3/envs/motif-map/bin/python"
-Pkg.build("PyCall")
-Pkg.add("DataFrames")
-Pkg.add("Gadfly")
-Pkg.add("CodecZlib")
+# ENV["PYTHON"]="/Users/emimiyashita/opt/anaconda3/envs/motif-map/bin/python"
+# Pkg.build("PyCall")
+# Pkg.add("DataFrames")
+# Pkg.add("Gadfly")
+# Pkg.add("CodecZlib")
 using DataFrames 
 using Gadfly
 using CSV
@@ -31,11 +31,11 @@ using  Distributed
 using Bio
 using Bio.Seq
 using Pkg
-Pkg.add("ArgParse")
-Pkg.add("JSON")
+# Pkg.add("ArgParse")
+# Pkg.add("JSON")
 using ArgParse
 using JSON
-Pkg.add("SAMTools")
+# Pkg.add("SAMTools")
 function parse_args()
     s = ArgParseSettings()
     @add_arg_table s begin
@@ -638,7 +638,7 @@ function makeCIGARarray(l_CIGAR)
      end
     
  end
- using DataFrames
+using DataFrames
 using CSV
 using Statistics
 using Dates
