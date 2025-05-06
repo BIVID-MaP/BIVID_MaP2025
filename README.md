@@ -1,7 +1,8 @@
 # BIVID_MaP2025
 
 The software for distribution of sequencing reads in SAM file and calculating deletion rate for each variant.
-![BIVID-MaP overview](https://raw.githubusercontent.com/EmiMiyashita-126/ForImages2/main/images/250505_Github_BIVID_MaP.jpg)
+![BIVID-MaP overview](images/250505_Github_BIVID_MaP.jpg)
+
 
 # Installation 
 ```bash
