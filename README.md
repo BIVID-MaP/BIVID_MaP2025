@@ -1,6 +1,6 @@
 # BIVID_MaP2025
 
-The software for distribution of sequencing reads in SAM file and caluculationg deletion rate for each variant.
+The software for distribution of sequencing reads in SAM file and caluculating deletion rate for each variant.
 ![The image of variant-specific interaction profiling](./images/250505_Github_BIVID_MaP.jpg)
 # Installation 
 ```bash
@@ -16,9 +16,9 @@ git clone https://github.com/EmiMiyashita-126/BIVID_MaP2025/
 # Usage
 ## Input
 
-Prepare follwing two arugments: <br>
+Prepare following two arguments: <br>
   `--fasta_path` : Path of the FASTA file containing the reference and mutation sequences<br>
-  `--sam_dir` : Path of the directroy including SAM files mapped to reference sequences<br>
+  `--sam_dir` : Path of the directory including SAM files mapped to reference sequences<br>
 
 
 ## Output
@@ -42,7 +42,7 @@ GAGATGTCTGGCGCAGACATCTCAAATTCAGCGCTTTGGTGGTGGAATGATGCTATGTGGGCTGAAAAACAAATCGGGCT
 ```
 
 # Demo
-Excuted by MacbookAir M3 8GB
+Executed by MacbookAir M3 8GB
 ```text
 cd BIVID_MaP2025
 # Output divided SAM files for each variant and base call tables for calculation of deleted reads
