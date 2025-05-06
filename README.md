@@ -1,7 +1,7 @@
 # BIVID_MaP2025
 
 The software for distribution of sequencing reads in SAM file and caluculationg deletion rate for each variant.
-
+![The image of variant-specific interaction profiling](/Users/emimiyashita/Desktop/事務書類/2025etal/analysis/Github/250505_Github_BIVID_MaP.jpg)
 # Installation 
 ```bash
 git clone https://github.com/EmiMiyashita-126/BIVID_MaP2025/
