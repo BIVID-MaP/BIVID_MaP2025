@@ -33,7 +33,6 @@ function extract_reads_by_fasta_id(input_samfile::AbstractString, output_samfile
     open(input_samfile, "r") do input_file
         open(output_samfile, "w") do output_file
             for line in eachline(input_file)
-                # ヘッダー行はそのまま新しいファイルに書き込む
                 if startswith(line, '@')
                     write(output_file, line, "\n")
                     continue
@@ -41,8 +40,7 @@ function extract_reads_by_fasta_id(input_samfile::AbstractString, output_samfile
                 
                 fields = split(line, '\t')
                 read_id = fields[3]
-
-                # リードのFasta IDを確認       
+     
                 if read_id == fasta_id
                     
                     write(output_file, line, "\n")
@@ -51,11 +49,11 @@ function extract_reads_by_fasta_id(input_samfile::AbstractString, output_samfile
         end
     end
 end
-function filter_sam_by_base(samfile::String, n::Int, base::Char, outputfile::String)###n番目の文字にbaseの塩基が入る場合
+function filter_sam_by_base(samfile::String, n::Int, base::Char, outputfile::String)
 
     open(samfile, "r") do input
         open(outputfile, "w") do output
-            # ヘッダーの書き込み
+
             while true 
                 line = readline(input)
            
@@ -66,8 +64,8 @@ function filter_sam_by_base(samfile::String, n::Int, base::Char, outputfile::Str
                     break
                 end
             end
-            # リードのフィルタリングと書き込み
-            while !eof(input)###リード0のファイルではない  
+
+            while !eof(input) 
                 line = readline(input)
                 fields = split(line, '\t')
    
@@ -111,9 +109,6 @@ function filter_sam_by_base(samfile::String, n::Int, base::Char, outputfile::Str
         end
     end
 end
-# 使用例
-
-
 
 function extract_reads_with_deletions(input_samfile::AbstractString, output_samfile::AbstractString, deletion_position_list)
     open(input_samfile, "r") do input_file
@@ -161,7 +156,6 @@ open(input_samfile, "r") do input_file
             seq = fields[10]
             cigar_string=makeCIGARstring(cigar)
 
-            # 欠損があるかどうかを確認
             if occursin("D",cigar_string)==true
                 write(output_file, line, "\n")
             end
@@ -442,7 +436,6 @@ end
                      end
                  end
  
-             #2) insertion
              elseif CIGARchar == 'I' && counter - insert_counter-1>0 
  
                  if convert(Int64, nucleotide_qc)-33 >= qualityvalue4filter
@@ -610,4 +603,3 @@ function main()
 end
 main()
 
-##julia ./BIVID.jl --fasta_path ./Demo/Input_file/test_FASTA_G4I8.txt --sam_dir ./Demo/Input_file/input_sam 
