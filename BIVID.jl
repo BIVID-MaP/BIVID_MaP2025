@@ -736,4 +736,4 @@ function main()
 end
 main()
 
-##julia ./Variant_deletion_profiling.jl --fasta_path ./Demo/Input_file/test_FASTA_G4I8.txt --sam_dir ./Demo/Input_file/input_sam 
+##julia ./BIVID.jl --fasta_path ./Demo/Input_file/test_FASTA_G4I8.txt --sam_dir ./Demo/Input_file/input_sam 
