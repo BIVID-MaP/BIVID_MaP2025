@@ -20,7 +20,7 @@ git clone https://github.com/EmiMiyashita-126/BIVID_MaP2025/
     - input_sam
       - test_TGIRT.sam
       - test_SSIV.sam
-  - `Output_file/`：Various SAMs/CSVs generated after script execution
+  - `Output_file/`：SAMs/CSVs generated after script execution
 - `images/`  
   Folder with README diagrams.
 # Requirement
