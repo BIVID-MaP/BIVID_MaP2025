@@ -37,7 +37,7 @@ Prepare two  following arguments: <br>
 
 
 ## Output
-The common gene name for all variants is <Gene> and the argument SAM file name is <Parent>, the sequence name of each variant in FASTA file is <FASTA ID>. 
+The common gene name for all variants is <Gene> and the argument SAM file name is `<Parent>`, the sequence name of each variant in FASTA file is `<FASTA ID>`. 
 ### SAM file
 
 - `<Gene>.<Parent>.sam`  
