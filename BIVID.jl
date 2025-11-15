@@ -1,3 +1,4 @@
+
 using Pkg
 using CSV
 using DataFrames
@@ -16,6 +17,7 @@ using BioSequences
 using BioTools
 using SAMTools
 using Dates
+
 function parse_args()
     s = ArgParseSettings()
     @add_arg_table s begin
@@ -25,122 +27,226 @@ function parse_args()
         "--sam_dir"
             help = "SAM file dir path mapped to reference"
             default = "./Demo/Input_file/input_sam"
+         "--output_dir"
+            help = "Output dir for divided samfiles"
+            default = "./Demo/Output_file/"
     end
     return ArgParse.parse_args(s)  
 end
  
+
+struct VariantGroup
+    ref_id::String
+    ref_num::String
+    ref_seq::String
+    gene::String
+    variants::Vector{Tuple{String,Int,Char,Char}}
+end
+
+struct VariantDef
+    num::String
+    pos::Int
+    minor::Char
+    major::Char
+    path::String
+end
+
+function read_fasta_dict(path::AbstractString)
+    entries = Dict{String,String}()
+    open(path, "r") do io
+        header = nothing
+        seq_buf = IOBuffer()
+        for raw in eachline(io)
+            line = strip(raw)
+            isempty(line) && continue
+            if startswith(line, ">")
+                if header !== nothing
+                    entries[header] = String(take!(seq_buf))
+                end
+                header = strip(line[2:end])
+            else
+                write(seq_buf, line)
+            end
+        end
+        if header !== nothing
+            entries[header] = String(take!(seq_buf))
+        end
+    end
+    return entries
+end
+
+parse_header(header::String) = split(header, '_', limit=3)
+
+function build_variant_groups(path::AbstractString)
+    entries = read_fasta_dict(path)
+    references = Dict{String,Tuple{String,String}}()
+    for (header, seq) in entries
+        parts = parse_header(header)
+        length(parts) >= 2 || error("Unexpected FASTA header format: $header")
+        gene = parts[2]
+        if occursin("Reference", header)
+            references[gene] = (header, seq)
+        end
+    end
+    isempty(references) && error("No reference entries found in FASTA")
+
+    groups = VariantGroup[]
+    for (gene, (ref_id, ref_seq)) in references
+        ref_parts = parse_header(ref_id)
+        ref_num = ref_parts[1]
+        variants = Tuple{String,Int,Char,Char}[]
+        for (header, seq) in entries
+            occursin("Reference", header) && continue
+            parts = parse_header(header)
+            length(parts) >= 2 || continue
+            parts[2] == gene || continue
+            length(seq) == length(ref_seq) || error("Length mismatch between $header and $ref_id")
+            diffs = [(i, ref_seq[i], seq[i]) for i in eachindex(seq) if ref_seq[i] != seq[i]]
+            isempty(diffs) && continue
+            length(diffs) == 1 || error("Multiple differences detected for $header; expected single SNP")
+            pos, maj, min = diffs[1]
+            push!(variants, (parts[1], pos, uppercase(min), uppercase(maj)))
+        end
+        push!(groups, VariantGroup(ref_id, ref_num, ref_seq, gene, variants))
+    end
+    return groups
+end
+
+function read_headers_and_first_alignment(io)
+    headers = String[]
+    first_alignment::Union{Nothing,String} = nothing
+    while !eof(io)
+        line = readline(io)
+        if startswith(line, '@')
+            push!(headers, line)
+        else
+            first_alignment = line
+            break
+        end
+    end
+    return headers, first_alignment
+end
+
+function write_headers!(io::IO, headers::Vector{String})
+    for header in headers
+        write(io, header)
+        endswith(header, "\n") || write(io, '\n')
+    end
+end
+
+function ensure_writer!(writers::Dict{String,IO}, path::String, headers::Vector{String})
+    if !haskey(writers, path)
+        isfile(path) && rm(path)
+        io = open(path, "w")
+        write_headers!(io, headers)
+        writers[path] = io
+    end
+    return writers[path]
+end
+
+function query_base_at_reference(fields::Vector{SubString{String}}, seq_chars::Vector{Char}, target_pos::Int)
+    cigar = fields[6]
+    cigar == "*" && return nothing
+    ref_start = parse(Int, fields[4])
+    ref_pos = ref_start
+    read_idx = 1
+    for match in eachmatch(r"(\d+)([MIDNSHP=X])", cigar)
+        len = parse(Int, match.captures[1])
+        op = match.captures[2]
+        if op == "M" || op == "=" || op == "X"
+            for _ in 1:len
+                if ref_pos == target_pos
+                    return read_idx <= length(seq_chars) ? seq_chars[read_idx] : nothing
+                end
+                ref_pos += 1
+                read_idx += 1
+            end
+        elseif op == "I" || op == "S"
+            read_idx += len
+        elseif op == "D" || op == "N"
+            if target_pos >= ref_pos && target_pos < ref_pos + len
+                return nothing
+            end
+            ref_pos += len
+        end
+    end
+    return nothing
+end
+
+function classify_alignment(fields::Vector{SubString{String}}, seq_chars::Vector{Char}, variant_defs::Vector{VariantDef})
+    matched_variant::Union{Nothing,VariantDef} = nothing
+    for variant in variant_defs
+        base = query_base_at_reference(fields, seq_chars, variant.pos)
+        base === nothing && return nothing
+        nb = uppercase(base)
+        if nb == variant.minor
+            matched_variant === nothing || return nothing
+            matched_variant = variant
+        elseif nb == variant.major
+            continue
+        else
+            return nothing
+        end
+    end
+    return matched_variant === nothing ? :major : matched_variant
+end
+
 function extract_reads_by_fasta_id(input_samfile::AbstractString, output_samfile::AbstractString, fasta_id::AbstractString)
     open(input_samfile, "r") do input_file
-        open(output_samfile, "w") do output_file
-            for line in eachline(input_file)
-                if startswith(line, '@')
-                    write(output_file, line, "\n")
-                    continue
-                end
-                
-                fields = split(line, '\t')
-                read_id = fields[3]
-     
-                if read_id == fasta_id
-                    
-                    write(output_file, line, "\n")
-                end
+        headers, first_alignment = read_headers_and_first_alignment(input_file)
+        writer = open(output_samfile, "w")
+        write_headers!(writer, headers)
+        function maybe_write(line)
+            fields = split(line, '\t')
+            if fields[3] == fasta_id
+                write(writer, line)
+                write(writer, '\n')
             end
         end
-    end
-end
-function filter_sam_by_base(samfile::String, n::Int, base::Char, outputfile::String)
-
-    open(samfile, "r") do input
-        open(outputfile, "w") do output
-
-            while true 
-                line = readline(input)
-           
-                if line[1] == '@'
-                    write(output, line)
-                    write(output, '\n')
-                else
-                    break
-                end
-            end
-
-            while !eof(input) 
-                line = readline(input)
-                fields = split(line, '\t')
-   
-                query = fields[10]  
-
-                MAPPOS=parse(Int,fields[4])-1
- 
-                cigar= fields[6]
-               
-                if occursin("H",cigar)==true
-
-                else
-                    c_s=makeCIGARstring(cigar)
-                    if length(c_s) > n-1-MAPPOS && MAPPOS < n 
-                        
-                        if n==1 && c_s[n-MAPPOS] == 'M' && query[n-MAPPOS] == base
-               
-                                write(output, line)
-                                write(output, '\n')
-            
-                        elseif count_M(c_s[1:n-MAPPOS])==length(c_s[1:n-MAPPOS]) && query[n-MAPPOS] == base && c_s[n-MAPPOS]=='M'
-              
-                                write(output, line)
-                                write(output, '\n')
-                            
-                        elseif count_D(c_s[1:n-1-MAPPOS]) >0 || count_I(c_s[1:n-1-MAPPOS]) >0
-                        
-           
-                            search_n=n-count_D(c_s[1:n-1-MAPPOS])+count_I(c_s[1:n-1-MAPPOS])-MAPPOS
-         
-                                if query[search_n] == base && c_s[search_n]=='M'
-                                    write(output, line)
-                                    write(output, '\n')
-                                end
-                        end
-                    end
-
-                end
-
-            end
+        if first_alignment !== nothing
+            maybe_write(first_alignment)
         end
+        while !eof(input_file)
+            maybe_write(readline(input_file))
+        end
+        close(writer)
     end
 end
 
-function extract_reads_with_deletions(input_samfile::AbstractString, output_samfile::AbstractString, deletion_position_list)
-    open(input_samfile, "r") do input_file
-        open(output_samfile, "w") do output_file
-            for line in eachline(input_file)
-                if startswith(line, '@')
-                    write(output_file, line, "\n")
-                    continue
-                end
-                fields = split(line, '\t')
-                cigar = fields[6]
-                MAPPOS=parse(Int,fields[4])-1
-                deletion_position_list2=map(x->x-MAPPOS,deletion_position_list)
-                seq = fields[10]
-                cigar_string=makeCIGARstring(cigar)
-                if occursin("D",cigar_string)==true
-                    count=0
-                    for c in cigar_string
-                        count+=1
-                    
-                        for delpos in deletion_position_list2
-                            if c=='D' && count==delpos
-                                write(output_file, line, "\n")
-                            end
-                        end
-                    end
-                end
+function partition_target_sam!(temp_path::AbstractString, ref_path::AbstractString,
+                               all_path::AbstractString, unassigned_path::AbstractString,
+                               variant_defs::Vector{VariantDef})
+    open(temp_path, "r") do input
+        headers, first_alignment = read_headers_and_first_alignment(input)
+        writers = Dict{String,IO}()
+        get_writer(path::String) = ensure_writer!(writers, path, headers)
+        all_io = get_writer(all_path)
+        function dispatch(line)
+            fields = split(line, "\t")
+            length(fields) >= 10 || return
+            seq_chars = collect(fields[10])
+            result = classify_alignment(fields, seq_chars, variant_defs)
+            line_out = string(line, "\n")
+            if result === nothing
+                unassigned_io = get_writer(unassigned_path)
+                write(unassigned_io, line_out)
+            else
+                target_io = result === :major ? get_writer(ref_path) : get_writer(result.path)
+                write(target_io, line_out)
             end
+            write(all_io, line_out)
+        end
+        if first_alignment !== nothing
+            dispatch(first_alignment)
+        end
+        while !eof(input)
+            dispatch(readline(input))
+        end
+        for io in values(writers)
+            close(io)
         end
     end
 end
-
 function extract_reads_with_alldeletions(input_samfile::AbstractString, output_samfile::AbstractString)
 open(input_samfile, "r") do input_file
     open(output_samfile, "w") do output_file
@@ -163,81 +269,86 @@ open(input_samfile, "r") do input_file
     end
 end
 end
+function make_divided_sam(fasta_path::AbstractString, sam_path::AbstractString,output_dir::AbstractString)
 
-find_snv(ref::AbstractString, mut::AbstractString) = let
-    @assert length(ref) == length(mut)
-    i = findfirst(i -> ref[i] ≠ mut[i], 1:length(ref))
-    i === nothing ? nothing : (i, ref[i], mut[i])
+    groups = build_variant_groups(fasta_path)
+    mkpath(output_dir)
+    Parent_sam=sam_path
+    sample_label = sample_label = splitext(basename(Parent_sam))[1]
+    sample_all_path = joinpath(output_dir, string(sample_label, "_all.sam"))
+    isfile(sample_all_path) && rm(sample_all_path)
+    for group in groups
+        gene = group.gene
+        println(sample_label)
+        println(gene)
+        println(output_dir)
+        ref_path = joinpath(output_dir, string(sample_label, "_", group.ref_num, "_", gene, ".sam"))
+        all_path = joinpath(output_dir, string(sample_label, "_all_", gene, ".sam"))
+        temp_path = joinpath(output_dir, string(sample_label, "_", gene, "_tmp.sam"))
+        unassigned_path = joinpath(output_dir, string(sample_label, "_unassigned_", gene, ".sam"))
+        isfile(temp_path) && rm(temp_path)
+        println(ref_path)
+        isfile(unassigned_path) && rm(unassigned_path)
+        extract_reads_by_fasta_id(Parent_sam, temp_path, group.ref_id)
+        if isempty(group.variants)
+            isfile(ref_path) && rm(ref_path)
+            mv(temp_path, ref_path; force=true)
+            cp(ref_path, all_path; force=true)
+            append_sample_all(sample_all_path, ref_path)
+            continue
+        end
+        variant_defs = VariantDef[]
+        for (num, pos, minor, major) in group.variants
+
+            variant_path = joinpath(output_dir, string(sample_label, "_", num, "_", gene, ".sam"))
+            println(variant_path)
+            isfile(variant_path) && rm(variant_path)
+            push!(variant_defs, VariantDef(num, pos, minor, major, variant_path))
+        end
+        isfile(ref_path) && rm(ref_path)
+        isfile(all_path) && rm(all_path)
+        partition_target_sam!(temp_path, ref_path, all_path, unassigned_path, variant_defs)
+        rm(temp_path; force=true)
+        append_sample_all(sample_all_path, all_path)
+        extract_reads_with_alldeletions(all_path,replace(all_path,".sam"=>".deletion.sam"))
+        extract_reads_with_alldeletions(unassigned_path,replace(all_path,".sam"=>".deletion.sam"))
+    end
+
+    return nothing
 end
 
-
-function read_fasta(path::AbstractString)
-    seqs = Dict{String,String}()
-    current = ""
-    for line in eachline(path)
-        if startswith(line, '>')
-            current = strip(line[2:end])
-            seqs[current] = ""
+function append_sample_all(sample_all_path::AbstractString, gene_all_path::AbstractString; include_header=false)
+    if !isfile(sample_all_path)
+        if include_header
+            cp(gene_all_path, sample_all_path; force=true)
         else
-            seqs[current] *= strip(line)
+            open(gene_all_path, "r") do fin
+                open(sample_all_path, "w") do fout
+                    for line in eachline(fin)
+                        startswith(line, "@") && continue
+                        write(fout, line)
+                        endswith(line, "\n") || write(fout, "\n")
+                    end
+                end
+            end
+        end
+        return
+    end
+    open(sample_all_path, "a") do fout
+        open(gene_all_path, "r") do fin
+            skip_header = !include_header
+            for line in eachline(fin)
+                if skip_header && startswith(line, "@")
+                    continue
+                end
+                write(fout, line)
+                endswith(line, "\n") || write(fout, "\n")
+            end
         end
     end
-    return seqs
 end
 
 
-function make_divided_sam(fasta_path,sam_path,output_folder)
-
-    seqs = read_fasta(fasta_path)
-
-    ref_name = only(filter(name -> endswith(name, "_Ref"), keys(seqs)))
-    ref_seq  = seqs[ref_name]
-    mut_names = filter(name -> endswith(name, "_Ref") == false, keys(seqs))
-
-    mut_pos_dict = Dict{String, Tuple{Int,Char,Char}}()
-    for mut in mut_names
-        snv = find_snv(ref_seq, seqs[mut])
-        snv === nothing && continue
-        idx, r, m = snv
-
-        mut_pos_dict[mut] = (idx, r, m)
-    end
-    parent_samfile_identifier=split(split(sam_path,"/")[end],".sam")[1]
-    seq_name=split(ref_name,"_")[1]
-    target_sam="$seq_name.$parent_samfile_identifier.sam"
-    extract_reads_by_fasta_id(sam_path, "$output_folder/$target_sam", ref_name)
-
-
-    for (mutname, mut_values) in zip(keys(mut_pos_dict), values(mut_pos_dict))
-        output_divided_sam=replace(target_sam,".sam"=>".$mutname.divided.sam")
-        filter_sam_by_base("$output_folder/$target_sam", 
-        mut_values[1],
-        mut_values[3]
-        , "$output_folder/$output_divided_sam")
-    end
-
-    current_sam="$output_folder/$target_sam"
-    for (mutname, mut_values) in zip(keys(mut_pos_dict), values(mut_pos_dict))
-        middle_reference_divided_sam=replace(target_sam,".sam"=>".$ref_name.$mutname.divided.middle.sam")
-        filter_sam_by_base(current_sam, 
-        mut_values[1],
-        mut_values[2]
-        , "$output_folder/$middle_reference_divided_sam")
-        if current_sam != "$output_folder/$target_sam"
-            rm(current_sam)
-        end
-        current_sam="$output_folder/$middle_reference_divided_sam"
-    end
-    output_reference_divided_sam=replace(target_sam,".sam"=>".$ref_name.divided.sam")
-    final_file = "$output_folder/$output_reference_divided_sam"
-    mv(current_sam, final_file,force=true)
-
-    all_deletion_outputsam=replace(target_sam,".sam"=>".all_deletion.sam")
-    variantpos_deletion_outputsam=replace(target_sam,".sam"=>".variantpos_deletion.sam")
-    extract_reads_with_alldeletions("$output_folder/$target_sam","$output_folder/$all_deletion_outputsam")
-    extract_reads_with_deletions("$output_folder/$target_sam","$output_folder/$variantpos_deletion_outputsam",[pos for (pos, _, _) in values(mut_pos_dict)])
-
-end
 
 function makeCIGARarray(l_CIGAR)
     l_CIGAR_num_array = split(l_CIGAR,r"[0-9]{1,3}")[2:end]
@@ -262,43 +373,7 @@ function makeCIGARarray(l_CIGAR)
     end
     return CIGARstring
  end
-
-function count_D(string::AbstractString)
-    count = 0
-    for char in string
-        if char == 'D'
-            count += 1
-        end
-    end
-    return count
-end
-function count_I(string::AbstractString)
-    count = 0
-    for char in string
-        if char == 'I'
-            count += 1
-        end
-    end
-    return count
-end
-function count_M(string::AbstractString)
-    count = 0
-    for char in string
-        if char != 'D' && char != 'I' 
-            count += 1
-        end
-    end
-    return count
-end
-function count_H(string::AbstractString)
-    count = 0
-    for char in string
-        if char == 'H'
-            count += 1
-        end
-    end
-    return count
-end
+ 
  
  function calc_mean_quality(QUAL::String)
      QUAL_LIST = Float64[]
@@ -312,26 +387,32 @@ end
  function make_pairwise_aln(read::String, ref::String, MappedPosition::Int64, cigar::String, quality::String)
 
      CIGARstring = makeCIGARstring(cigar)
-     pairwise_aln = [['X', 'S', 'X', '!'] for i in 1:MappedPosition-1]::Array{Array{Char,1},1}  
+ 
+
+     pairwise_aln = [['X', 'S', 'X', '!'] for i in 1:MappedPosition-1]::Array{Array{Char,1},1}  #11/26に付け足した. これが無いと逆鎖が大変なことになる.
+     #TODO: we should pre-allocate memory for this array.
+ 
      counter= 1
+
      deletion_counter = 0
-     for i in 1:length(CIGARstring) 
+     for i in 1:length(CIGARstring) #iはcigar stringのloc
          if CIGARstring[i] == 'M'
              j = i-deletion_counter
-             pairwise_aln = push!(pairwise_aln, [read[j], CIGARstring[i], ref[counter+MappedPosition-1],quality[j]]) 
+             pairwise_aln = push!(pairwise_aln, [read[j], CIGARstring[i], ref[counter+MappedPosition-1],quality[j]]) #mapping posiの分だけずらす.
              counter += 1
          elseif CIGARstring[i] == 'I'
              j = i-deletion_counter
              pairwise_aln = push!(pairwise_aln, [read[j], CIGARstring[i], '-', quality[j]])
          elseif CIGARstring[i] == 'D'
              j = i-deletion_counter
-             pairwise_aln = push!(pairwise_aln, ['-', CIGARstring[i], ref[counter+MappedPosition-1], quality[j]]) 
+             pairwise_aln = push!(pairwise_aln, ['-', CIGARstring[i], ref[counter+MappedPosition-1], quality[j]])  #mapping posiの分だけずらす.
              counter += 1
              deletion_counter +=1
-         elseif CIGARstring[i] == 'S' && counter!=1
+         elseif CIGARstring[i] == 'S' && counter!=1 #exclude the case cigar starts with S
              j = i-deletion_counter
              pairwise_aln = push!(pairwise_aln, ['X', CIGARstring[i], 'X', quality[j]])
          else
+             #print(CIGARstring[i])
          end
      end
      return pairwise_aln
@@ -390,7 +471,9 @@ end
      AUX_MAP   = string(tokens[end])
      MEAN_QUAL = calc_mean_quality(QUAL) 
      
+
      if (occursin("Library", AUX_MAP) && exclude_AUXMAP) || (MEAN_QUAL < meanQfilter)
+
          return base_call_table
      end
      push!(FLAG_list,FLAG)
@@ -400,7 +483,7 @@ end
              return base_call_table
          end
      end
- 
+
      if occursin("H", CIGAR)
          return base_call_table
      end
@@ -416,13 +499,13 @@ end
              if i+1 <= length(pairwisealn)
                  nextCIGARchar = pairwisealn[i+1][2]
              else
-                 nextCIGARchar = '@' 
+                 nextCIGARchar = '@'
              end
  
              if CIGARchar != 'S' 
                  counter+=1
              end
- 
+
              if CIGARchar == 'D' && nextCIGARchar != 'D' 
                  indexnum = nuc2numDict['D']
                  if nextCIGARchar != 'D'
@@ -440,7 +523,7 @@ end
  
                  if convert(Int64, nucleotide_qc)-33 >= qualityvalue4filter
                      indexnum = nuc2numDict['I']
-                     if nextCIGARchar != 'I'
+                     if nextCIGARchar != 'I' 
                          try
                              base_call_table[counter - insert_counter+MAPPOS-1, indexnum] +=1
                          catch e
@@ -450,11 +533,12 @@ end
                  end
                  insert_counter += 1
  
+ 
+
              elseif CIGARchar =='S' 
                  continue
  
-
-             elseif CIGARchar == 'M' 
+             elseif CIGARchar == 'M'
                  if convert(Int64, nucleotide_qc)-33 >= qualityvalue4filter
                      indexnum = nuc2numDict[readnucleotide]
                      try
@@ -472,11 +556,22 @@ end
      return base_call_table
  end
  
-function make_base_call_table(ref_fasta_dir, samfile, bc_output_dir; modeDI=true, qualityvalue4filter::Int64=20, meanQfilter::Float64= 20.0)
-
-     samID = split(split(samfile,"/")[end], ".divided.sam")[1] 
+ 
+ 
+ println("base_call_table.jl installed.")
+ 
+ 
+ 
+  function make_base_call_table(ref_fasta_dir, samfile, outputdir; modeDI=true, qualityvalue4filter::Int64=20, meanQfilter::Float64= 20.0)
+ 
+     """
+     https://samtools.github.io/hts-specs/SAMv1.pdf
+     samfile: YYYYMMDD_N_250merC.sam (N=samID)
+     in the fasta file, identifier should be "NAME:NUMBER_DESCRIPTION". Then this function pick up the information.
+     """
+     samID = split(split(samfile,"/")[end], ".sam")[1] 
      id2ref = Dict{String, String}()
-     id2table = Dict{String, DataFrame}() 
+     id2table = Dict{String, DataFrame}() #my library contains 1800seq.
      FLAG_list=[]
      fasta = open(FASTA.Reader, ref_fasta_dir)
      
@@ -490,10 +585,11 @@ function make_base_call_table(ref_fasta_dir, samfile, bc_output_dir; modeDI=true
      for line in eachline(f)
          if !startswith(line, "@")
              RNAID = string(split(line, "\t")[3])
-
              FLAG=string(split(line, "\t")[2])
-             if haskey(id2ref, RNAID)
+             if haskey(id2ref, RNAID) #exclude "*"
+ 
                  refseq = id2ref[RNAID]
+     
                  id2table[RNAID] = update_basecall_table(id2table[RNAID], refseq, line; modeDI =modeDI, qualityvalue4filter=qualityvalue4filter, meanQfilter= meanQfilter)
              end
          end
@@ -501,15 +597,17 @@ function make_base_call_table(ref_fasta_dir, samfile, bc_output_dir; modeDI=true
    
      close(f)
      for (RNAID, base_call_table) in id2table
-         fname = "$(string(samID)).csv"
-         if occursin("Ref",RNAID)
-            CSV.write("$bc_output_dir/$fname",base_call_table)
-         end
-
+         
+         fname = outputdir*"/"*string(samID)*".csv"
+         
+         CSV.write(fname,base_call_table)
      end
     
  end
-
+ using DataFrames
+using CSV
+using Statistics
+using Dates
 
 
 function make_mutationrate(call_table)
@@ -526,6 +624,7 @@ function num2seq(dict::Dict, num)
     name = ""::String
     ref = ""::String
 
+    #番号の検索
     for (k::String, v::String) in dict
         if occursin(num, k)
             name = k
@@ -576,30 +675,29 @@ function save_log(args_dict, log_dir)
     return log_dir
 end
 
-function makeBC(fastafile,output_folder)
+function makeBC(fastafile,output_dir)
 
-    samfile_directory="$output_folder"
-    samfiles = [samfile for samfile in readdir("$samfile_directory") if occursin("divided.sam", samfile)]
-    mkpath("$output_folder/basecalltable")
+    samfile_directory="$output_dir"
+    samfiles = [samfile for samfile in readdir("$samfile_directory") if occursin(".sam", samfile)]
+    mkpath("$output_dir/basecalltable")
     pmap(
         samfile->make_base_call_table(
             "$fastafile",
-            "$output_folder/$samfile",
-            "$output_folder/basecalltable"
+            "$output_dir/$samfile",
+            "$output_dir/basecalltable"
     ; modeDI=true, qualityvalue4filter=30, meanQfilter= 20.0),
         samfiles)
 end
-
 function main()
     args = parse_args() 
     fasta_path = args["fasta_path"]
     sam_dir=args["sam_dir"]
-    output_folder=mkpath("./Demo/Output_file")
+    output_dir=args["output_dir"]
     samfiles = [samfile for samfile in readdir("$sam_dir") if occursin(".sam", samfile)]
     foreach(samfile -> begin
-    make_divided_sam(fasta_path, "$sam_dir/$samfile", output_folder)
-    makeBC(fasta_path, output_folder)
+    make_divided_sam(fasta_path, "$sam_dir/$samfile", output_dir)
+    println(samfile)
+    makeBC(fasta_path, output_dir)
     end, samfiles)
 end
 main()
-
