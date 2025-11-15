@@ -102,7 +102,7 @@ sys	0m0.847s
 # Ensure that there are no significant deletions in the variant positions:
 # The total number of deletion‐containing reads
 samtools view -c ./Demo/Output_file/test_TGIRT_all_G4I8.deletion.sam
-# The number of reads with deletion in variant positions
+# The number of reads with deletion in unassigned reads
 samtools view -c ./Demo/Output_file/test_TGIRT_unassigned_G4I8.deletion.sam
 
 
