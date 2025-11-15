@@ -279,15 +279,11 @@ function make_divided_sam(fasta_path::AbstractString, sam_path::AbstractString,o
     isfile(sample_all_path) && rm(sample_all_path)
     for group in groups
         gene = group.gene
-        println(sample_label)
-        println(gene)
-        println(output_dir)
         ref_path = joinpath(output_dir, string(sample_label, "_", group.ref_num, "_", gene, ".sam"))
         all_path = joinpath(output_dir, string(sample_label, "_all_", gene, ".sam"))
         temp_path = joinpath(output_dir, string(sample_label, "_", gene, "_tmp.sam"))
         unassigned_path = joinpath(output_dir, string(sample_label, "_unassigned_", gene, ".sam"))
         isfile(temp_path) && rm(temp_path)
-        println(ref_path)
         isfile(unassigned_path) && rm(unassigned_path)
         extract_reads_by_fasta_id(Parent_sam, temp_path, group.ref_id)
         if isempty(group.variants)
@@ -301,7 +297,6 @@ function make_divided_sam(fasta_path::AbstractString, sam_path::AbstractString,o
         for (num, pos, minor, major) in group.variants
 
             variant_path = joinpath(output_dir, string(sample_label, "_", num, "_", gene, ".sam"))
-            println(variant_path)
             isfile(variant_path) && rm(variant_path)
             push!(variant_defs, VariantDef(num, pos, minor, major, variant_path))
         end
@@ -444,10 +439,7 @@ function makeCIGARarray(l_CIGAR)
  
      end
      close(fasta)
-     println(RNAid)
-     println(refseq)
      bct = create_base_call_table(refseq)
-     println("start loading ", samfile)
      f= open(samfile, "r")
      for line in eachline(f)
          if !startswith(line, "@")
@@ -556,9 +548,6 @@ function makeCIGARarray(l_CIGAR)
      return base_call_table
  end
  
- 
- 
- println("base_call_table.jl installed.")
  
  
  
@@ -696,7 +685,6 @@ function main()
     samfiles = [samfile for samfile in readdir("$sam_dir") if occursin(".sam", samfile)]
     foreach(samfile -> begin
     make_divided_sam(fasta_path, "$sam_dir/$samfile", output_dir)
-    println(samfile)
     makeBC(fasta_path, output_dir)
     end, samfiles)
 end
