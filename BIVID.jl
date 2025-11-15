@@ -306,7 +306,7 @@ function make_divided_sam(fasta_path::AbstractString, sam_path::AbstractString,o
         rm(temp_path; force=true)
         append_sample_all(sample_all_path, all_path)
         extract_reads_with_alldeletions(all_path,replace(all_path,".sam"=>".deletion.sam"))
-        extract_reads_with_alldeletions(unassigned_path,replace(all_path,".sam"=>".deletion.sam"))
+        extract_reads_with_alldeletions(unassigned_path,replace(unassigned_path,".sam"=>".deletion.sam"))
     end
 
     return nothing
