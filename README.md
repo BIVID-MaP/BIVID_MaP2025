@@ -37,33 +37,42 @@ Prepare two  following arguments: <br>
 
 
 ## Output
-The common gene name for all variants is <Gene> and the argument SAM file name is <Parent>, the sequence name of each variant in FASTA file is <FASTA ID>. 
+The common gene name for all variants is <Gene> and the argument SAM file name is <Parent>, the sample number of each variant in FASTA file is <FASTA ID>. 
 ### SAM file
 
-- `<Gene>.<Parent>.sam`  
+- `<Parent>_all_<Gene>.sam`  
   SAM containing all reads mapped to the target gene<br>
 
-- `<Gene>.<Parent>.<FASTA ID>.divided.sam`  
+- `<Parent>_<FASTA ID>_<Gene>.sam`  
   SAM files divided by variant
 
-- `<Gene>.<Parent>.all_deletion.sam`  
+- `<Parent>.all_<Gene>.deletion.sam`  
   SAM containing reads with all deletions mapped to the target gene 
 
-- `<Gene>.<Parent>.variantpos_deletion.sam`  
+- `<Parent>_unassinged_<Gene>.sam`  
    SAM file containing reads mapped to the target gene with the deletion at the mutation position
+  
+- `<Parent>_unassinged_<Gene>.sam`  
+   SAM containing reads with all deletions in unassingned reads
+
+- `<Parent>_all.sam`  
+  SAM containing all reads mapped to the all analyzed gene
+  
 
 ### CSV file
+All output files will be converted to a basecall table.
+Specifically, please use the following file for calculating the deletion rate per variant
 
-- `<Gene>.<Parent>.<FASTA ID>.csv`  
-  Base call table used to calculate the deletion rate for each base. Output from `<Gene>.<Parent>.<FASTA ID>.divided.sam` for each variant. 
+- `<Parent>_<FASTA ID>_<Gene>.csv`  
+  Base call table used to calculate the deletion rate for each base. Output from `<Parent>_<FASTA ID>_<Gene>.divided.sam` for each variant. 
 
 ## File Instructions
-・The input FASTA file contains sequence names and their corresponding DNA sequences; the reference sequence is labelled 	`<Gene name>_Ref`.
+・The input FASTA file contains sequence names and their corresponding DNA sequences; the reference sequence is labelled 	`<num>_<Gene name>_Reference`.
 ```text
 #./Demo/Input_file/test_FASTA_G4I8.txt
->G4I8_Ref
+>1_G4I8_Reference
 GAGATGTCTGGCGCAGACATCTCAAATTCAGCGCTTTGGTGGTGGAATGGTGCTATGTGGGCTGAAAAACAAATCGGGCTTCGGTCCGGTTC
->G4I8_Mut
+>2_G4I8_Mutant
 GAGATGTCTGGCGCAGACATCTCAAATTCAGCGCTTTGGTGGTGGAATGATGCTATGTGGGCTGAAAAACAAATCGGGCTTCGGTCCGGTTC
 ```
 
@@ -85,19 +94,16 @@ user	0m6.958s
 sys	0m1.031s
 
 # Output divided SAM files for each variant and base call tables for calculation of deleted reads
-julia ./BIVID.jl --fasta_path ./Demo/Input_file/test_FASTA_G4I8.txt --sam_dir ./Demo/Input_file/input_sam
+julia ./BIVID.jl --fasta_path ./Demo/Input_file/test_FASTA_G4I8.txt --sam_dir ./Demo/Input_file/input_sam --output_dir ./Demo/Output_file/
 real	0m31.185s
 user	0m28.659s
 sys	0m0.924s
 
 # Ensure that there are no significant deletions in the variant positions:
 # The total number of deletion‐containing reads
-samtools view -c ./Demo/Output_file/G4I8.test_TGIRT.all_deletion.sam
+samtools view -c ./Demo/Output_file/test_TGIRT_all_G4I8.deletion.sam
 # The number of reads with deletion in variant positions
-samtools view -c ./Demo/Output_file/G4I8.test_TGIRT.variantpos_deletion.sam
-```
-
-
+samtools view -c ./Demo/Output_file/test_TGIRT_unassigned_G4I8.deletion.sam
 
 
 
